@@ -1,6 +1,7 @@
 package org.embulk.output.maxcompute;
 
 import com.aliyun.odps.Odps;
+import com.aliyun.odps.OdpsException;
 import com.aliyun.odps.PartitionSpec;
 import com.aliyun.odps.account.Account;
 import com.aliyun.odps.account.AliyunAccount;
@@ -14,8 +15,6 @@ import org.embulk.config.*;
 import org.embulk.spi.*;
 import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.type.*;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -55,7 +54,6 @@ public class MaxcomputeOutputPlugin
 
         private final Logger log = Exec.getLogger(MaxcomputePageOutput.class);
 
-        private final DateTimeFormatter TO_STRING_FORMATTER_MILLIS = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSS ").withZoneUTC();
         private PageReader pageReader;
         private PluginTask task;
         private Schema schema;
@@ -70,6 +68,7 @@ public class MaxcomputeOutputPlugin
             this.task = task;
             this.schema = schema;
             this.odps = generateOdpsClient(task);
+            this.taskInit();
             this.uploadSession = generateTableUploadSession(odps, task);
             this.retryStrategy = new RetryStrategy(6, 4, RetryStrategy.BackoffStrategy.EXPONENTIAL_BACKOFF);
         }
@@ -95,7 +94,7 @@ public class MaxcomputeOutputPlugin
                         log.info("Running with no partition mode");
                         uploadSession = tableTunnel.createUploadSession(task.getProjectName(), task.getTableName());
                     } else {
-                        log.info("Running with partition mode as : " + task.getPartition().get());
+                        log.info(String.format("Running with partition mode as : [%s]", task.getPartition().get()));
                         PartitionSpec partitionSpec = new PartitionSpec(task.getPartition().get());
                         uploadSession = tableTunnel.createUploadSession(task.getProjectName(), task.getTableName(), partitionSpec);
                     }
@@ -106,6 +105,42 @@ public class MaxcomputeOutputPlugin
                 }
             } else {
                 throw new UnsupportedOperationException("Less parameters for maxcompute output plugin to create table tunnel session");
+            }
+        }
+
+        private void taskInit() {
+            try {
+                // Check target table exists or not
+                if (OdpsUtil.isTableExist(odps, task.getProjectName(), task.getTableName())) {
+                    log.info(String.format("Target table [%s] in project [%s] exists!", task.getTableName(), task.getProjectName()));
+                } else {
+                    throw new UnsupportedOperationException(String.format("Target table [%s] in project [%s] does not exists!", task.getTableName(), task.getProjectName()));
+                }
+                // Check table partition configuration
+                if (!task.getPartition().isPresent()) {
+                    log.info(String.format("No need check partition configuration of table [%s] in project [%s]!", task.getTableName(), task.getProjectName()));
+                } else {
+                    partitionTableInit();
+                }
+            } catch (OdpsException e) {
+                log.error(e.getMessage());
+                throw new UnsupportedOperationException(String.format("Error when init task with table [%s] in project [%s]", task.getTableName(), task.getProjectName()));
+            }
+        }
+
+        private void partitionTableInit() {
+            try {
+                // Check target table is partition table or not
+                if (OdpsUtil.isPartitionTable(odps, task.getProjectName(), task.getTableName())) {
+                    log.info(String.format("Target table [%s] with partition spec [%s] is partition table in maxcompute", task.getTableName(), task.getPartition().get()));
+                } else {
+                    throw new UnsupportedOperationException(String.format("Target table [%s] in project [%s] with partition spec [%s] is not partition table in maxcompute!", task.getTableName(), task.getProjectName(), task.getPartition().get()));
+                }
+                // Prepare table partition (Add new partition if not exists)
+                OdpsUtil.preparePartition(odps, task.getProjectName(), task.getTableName(), task.getPartition().get());
+            } catch (OdpsException e) {
+                log.error(e.getMessage());
+                throw new UnsupportedOperationException(String.format("Error when prepare partition table [%s] in project [%s] with partition spec [%s]", task.getTableName(), task.getProjectName(), task.getPartition().get()));
             }
         }
 
