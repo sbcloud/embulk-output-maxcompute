@@ -98,6 +98,7 @@ public class OdpsUtil {
         if (OdpsUtil.isPartitionExist(table, partition)) {
             log.info(String.format("The target partition [%s] exists, no need to add new one!", partition));
         } else {
+            log.info(String.format("Add target partition [%s] with table [%s] of project [%s]!", partition, tableName, projectName));
             StringBuilder addPart = new StringBuilder();
             addPart.append("alter table ").append(table.getName()).append(" add IF NOT EXISTS partition(")
                     .append(partition).append(");");
@@ -107,6 +108,51 @@ public class OdpsUtil {
                 log.error(String.format("Failed to add partition [%s] for table [%s] of project [%s]", partition, tableName, projectName));
                 throw new OdpsException(e);
             }
+        }
+    }
+
+    /**
+     * Truncate non-partition table
+     * @param odps odps client
+     * @param projectName target project name
+     * @param tableName target table name
+     * @throws OdpsException
+     */
+    public static void truncateNonePartitionTable(Odps odps, String projectName, String tableName) throws OdpsException {
+        log.info(String.format("Truncate non-partition table [%s] of project [%s]", tableName, projectName));
+        String truncateNonPartitionedTableSql = "truncate table " + tableName + ";";
+        try {
+            runSqlTaskWithRetry(odps, truncateNonPartitionedTableSql, MAX_RETRY_TIME, 1000, true);
+        } catch (Exception e) {
+            log.error(String.format("Failed to truncate non-partition table [%s] of project [%s]", tableName, projectName));
+            throw new OdpsException(e);
+        }
+    }
+
+    /**
+     * Drop target partition
+     * @param odps odps client
+     * @param projectName target project name
+     * @param tableName target table name
+     * @param partition target partition
+     * @throws OdpsException
+     */
+    public static void dropPartition(Odps odps, String projectName, String tableName, String partition) throws OdpsException {
+        Table table = odps.tables().get(projectName, tableName);
+        if (OdpsUtil.isPartitionExist(table, partition)) {
+            log.info(String.format("The target partition [%s] exists! Running drop partition action!", partition));
+            StringBuilder dropPart = new StringBuilder();
+            dropPart.append("alter table ").append(table.getName())
+                    .append(" drop IF EXISTS partition(").append(partition)
+                    .append(");");
+            try {
+                runSqlTaskWithRetry(odps, dropPart.toString(), MAX_RETRY_TIME, 1000, true);
+            } catch (Exception e) {
+                log.error(String.format("Failed to drop partition [%s] with table [%s] of project [%s]", partition, tableName, projectName));
+                throw new OdpsException(e);
+            }
+        } else {
+            log.info(String.format("The target partition [%s] does not exist! No need to run drop partition action!", partition));
         }
     }
 

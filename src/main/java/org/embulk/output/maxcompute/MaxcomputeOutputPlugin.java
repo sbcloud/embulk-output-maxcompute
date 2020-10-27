@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 public class MaxcomputeOutputPlugin
         implements OutputPlugin {
@@ -48,6 +49,14 @@ public class MaxcomputeOutputPlugin
         @Config("partition")
         @ConfigDefault("null")
         Optional<String> getPartition();
+
+        @Config("overwrite")
+        @ConfigDefault("false")
+        public boolean getOverwrite();
+
+        @Config("mappings")
+        @ConfigDefault("{}")
+        public Optional<Map<String, String>> getMappings();
     }
 
     public class MaxcomputePageOutput implements TransactionalPageOutput {
@@ -61,12 +70,14 @@ public class MaxcomputeOutputPlugin
         private Odps odps;
         private TableTunnel.UploadSession uploadSession;
         private RetryStrategy retryStrategy;
+        private Map<String, String> mappings;
 
 
         public MaxcomputePageOutput(PluginTask task, Schema schema) {
             this.pageReader = new PageReader(schema);
             this.task = task;
             this.schema = schema;
+            this.mappings = task.getMappings().isPresent()? task.getMappings().get() : null;
             this.odps = generateOdpsClient(task);
             this.taskInit();
             this.uploadSession = generateTableUploadSession(odps, task);
@@ -116,6 +127,20 @@ public class MaxcomputeOutputPlugin
                 } else {
                     throw new UnsupportedOperationException(String.format("Target table [%s] in project [%s] does not exists!", task.getTableName(), task.getProjectName()));
                 }
+
+                // Check table overwrite configuration
+                if (!task.getOverwrite()) {
+                    log.info("No need to clear data before running data!");
+                } else {
+                    if (!task.getPartition().isPresent()) {
+                        log.info(String.format("Clear data with non-partition table [%s] of project [%s]", task.getTableName(), task.getProjectName()));
+                        OdpsUtil.truncateNonePartitionTable(odps, task.getProjectName(), task.getTableName());
+                    } else {
+                        log.info(String.format("Clear data in partition [%s] with table [%s] of project [%s]", task.getPartition().get(), task.getTableName(), task.getProjectName()));
+                        OdpsUtil.dropPartition(odps, task.getProjectName(), task.getTableName(), task.getPartition().get());
+                    }
+                }
+
                 // Check table partition configuration
                 if (!task.getPartition().isPresent()) {
                     log.info(String.format("No need check partition configuration of table [%s] in project [%s]!", task.getTableName(), task.getProjectName()));
@@ -144,6 +169,15 @@ public class MaxcomputeOutputPlugin
             }
         }
 
+        private String getColumnName(Column column){
+            if (task.getMappings().isPresent() && null != mappings && mappings.containsKey(column.getName())){
+                // Do column mapping convert
+                return mappings.get(column.getName());
+            }else {
+                return column.getName();
+            }
+        }
+
         @Override
         public void add(Page page) {
             pageReader.setPage(page);
@@ -151,27 +185,30 @@ public class MaxcomputeOutputPlugin
             try {
                 recordWriter = (TunnelBufferedWriter) uploadSession.openBufferedWriter();
                 recordWriter.setRetryStrategy(retryStrategy);
+                recordWriter.setBufferSize(64 * 1024 * 1024);
                 Record tmp = uploadSession.newRecord();
+                int i = 0;
                 while (pageReader.nextRecord()) {
                     for (Column column : schema.getColumns()) {
                         // Data Format https://github.com/alibaba/DataX/blob/master/odpswriter/doc/odpswriter.md
                         if (column.getType() instanceof StringType) {
-                            tmp.setString(column.getName(), pageReader.getString(column));
+                            tmp.setString(getColumnName(column), pageReader.getString(column));
                         } else if (column.getType() instanceof BooleanType) {
-                            tmp.setBoolean(column.getName(), pageReader.getBoolean(column));
+                            tmp.setBoolean(getColumnName(column), pageReader.getBoolean(column));
                         } else if (column.getType() instanceof LongType) {
-                            tmp.setBigint(column.getName(), pageReader.getLong(column));
+                            tmp.setBigint(getColumnName(column), pageReader.getLong(column));
                         } else if (column.getType() instanceof DoubleType) {
-                            tmp.setDouble(column.getName(), pageReader.getDouble(column));
+                            tmp.setDouble(getColumnName(column), pageReader.getDouble(column));
                         } else if (column.getType() instanceof TimestampType) {
                             Timestamp timestamp = pageReader.getTimestamp(column);
-                            tmp.setDatetime(column.getName(), new Date(timestamp.toEpochMilli()));
+                            tmp.setDatetime(getColumnName(column), new Date(timestamp.toEpochMilli()));
                         }
                     }
                     recordWriter.write(tmp);
+                    i += 1;
                 }
+                log.info(String.format("Operate data count [%s]", i));
                 recordWriter.close();
-                uploadSession.commit();
             } catch (TunnelException | IOException e) {
                 throw new UnsupportedOperationException("Failed to upload related data");
             }
@@ -194,6 +231,11 @@ public class MaxcomputeOutputPlugin
 
         @Override
         public TaskReport commit() {
+            try {
+                uploadSession.commit();
+            } catch (TunnelException | IOException e) {
+                throw new UnsupportedOperationException("Failed to commit related data");
+            }
             return Exec.newTaskReport();
         }
     }
