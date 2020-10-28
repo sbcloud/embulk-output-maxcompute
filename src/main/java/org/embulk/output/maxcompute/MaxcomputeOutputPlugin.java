@@ -169,6 +169,20 @@ public class MaxcomputeOutputPlugin
             }
         }
 
+        private void cleanup(){
+            try {
+                if (null != recordWriter) {
+                    recordWriter.close();
+                }
+                if (null != pageReader) {
+                    pageReader.close();
+                }
+            } catch (IOException e) {
+                log.error(e.getMessage());
+                throw new UnsupportedOperationException("Failed to clean up record writer and page reader!");
+            }
+        }
+
         private String getColumnName(Column column){
             if (task.getMappings().isPresent() && null != mappings && mappings.containsKey(column.getName())){
                 // Do column mapping convert
@@ -216,17 +230,17 @@ public class MaxcomputeOutputPlugin
 
         @Override
         public void finish() {
-
+            cleanup();
         }
 
         @Override
         public void close() {
-
+            cleanup();
         }
 
         @Override
         public void abort() {
-
+            cleanup();
         }
 
         @Override
