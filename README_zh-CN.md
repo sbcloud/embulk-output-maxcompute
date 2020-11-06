@@ -19,7 +19,7 @@
 - **tunnelUrl**: 配置 ODPS tunnel endpoint, 具体取值参考 https://www.alibabacloud.com/help/doc-detail/34951.htm ，基于不同的地区和连接方式进行选择 (string, 默认值: `"http://dt.ap-northeast-1.maxcompute.aliyun.com"`)
 - **projectName**: ODPS 目标项目名 (string, 必填项)
 - **tableName**: ODPS 目标表名，请务必在运行之前创建成功 (string, 必填项)
-- **partition**: 分区信息，格式类似 'pt=20201026'，仅对分区表生效。非分区表可忽略此配置项，目标表为分区表时，设置此配置项会导致错误。 (string, 默认值: `null`)
+- **partition**: 分区信息，格式类似 'pt=20201026'，仅对分区表生效。非分区表可忽略此配置项，目标表为非分区表时，设置此配置项会导致错误。 (string, 默认值: `null`)
 - **overwrite**: 设置为 true 则会在更新数据之前清除已存在的数据。 对于非分区表，将会执行 `truncate table` 来清除数据；对于分区表，则会删除 `partition` 指定的对应分区 (boolean, 默认值: `false`)
 - **mappings**: 定义字段对应关系，如果 MaxCompute 表的列名和数据读取插件中的名称一一对应，可以不用额外配置 (Map of string, 默认值: `{}`)
 
@@ -54,6 +54,7 @@ out:
 ```
 
 下面的配置项将会上传数据到新加坡地区的非分区表，使用 odpsUrl 和 tunnelUrl 两个配置项来指定项目地域。
+不同地区和连接方式可依据 https://www.alibabacloud.com/help/doc-detail/34951.htm 定义的 Endpoint 设定 odpsUrl 和 tunnelUrl 两个配置项。
 对于非分区表来说，`partition` 这个配置项没有必要设置。
 配置项中 `overwrite` 设为 false，因此不会再上传之前清空已存在的数据。
 没有配置 `mappings` ，因此将默认使用名称来匹配 MaxCompute 表结构和数据读取插件传入的表结构。

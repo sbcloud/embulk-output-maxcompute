@@ -53,6 +53,7 @@ out:
 ```
 
 Upload data to non-partition table in SG region, use odpsUrl and tunnelUrl to change the target region.
+For Different regions and connection mode,Can set two configuration items odpsurl and tunnelurl by the endpoint defined on the site https://www.alibabacloud.com/help/doc-detail/34951.htm.
 For non-partition tables, remove partition from configuration file.
 Will not clean up existing data as overwirite is false.
 Remove mappings from configuration file as input schema could match maxcompute table structure by names.

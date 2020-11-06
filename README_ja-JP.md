@@ -1,8 +1,8 @@
 [English](./README.md) | [简体中文](./README_zh-CN.md) | 日本語
 
-# Maxcompute output plugin for Embulk
+# Embulk用MaxComputeアウトプットプラグイン
 
-This output plugin is used to write record to Aliyun Maxcompute
+このプラグインはAliyun Maxcomputeにデータを書き込むためのものです
 
 ## Overview
 
@@ -11,23 +11,24 @@ This output plugin is used to write record to Aliyun Maxcompute
 * **Resume supported**: no
 * **Cleanup supported**: yes
 
-## Configuration
+## 設定項目
 
-- **accessKeyId**: Aliyun account access key id (string, required)
-- **accessKeySecret**: Aliyun account access key secret (string, required)
-- **odpsUrl**: ODPS endpoint, refer to https://www.alibabacloud.com/help/doc-detail/34951.htm , based on different regions and connection mode (string, default: `"http://service.ap-northeast-1.maxcompute.aliyun.com/api"`)
-- **tunnelUrl**: ODPS tunnel endpoint, refer to https://www.alibabacloud.com/help/doc-detail/34951.htm , based on different regions and connection mode (string, default: `"http://dt.ap-northeast-1.maxcompute.aliyun.com"`)
-- **projectName**: Target ODPS project name (string, required)
-- **tableName**: Target ODPS table name, need to be created before running the job (string, required)
-- **partition**: Partition spec like 'pt=20201026', only used for partition tables. no need to set for non-partition table, will pop up errors if set values with non-partition tables (string, default: `null`)
-- **overwrite**: Clear existing data at the beginning if the value is true. For non-partition table, clear data with `truncate table`; For partition table, drop partition defined in `partition` parameter (boolean, default: `false`)
-- **mappings**: Defined mapping relationships for columns, make sure your maxcompute table columns could map input schema by names if you do not set related values (Map of string, default: `{}`)
+- **accessKeyId**: アリババクラウドアカウントのaccess key id (string, 必須項目)
+- **accessKeySecret**: アリババクラウドアカウントのaccess key secret (string, 必須項目)
+- **odpsUrl**:ODPS endpointの設定はこのURLを参照ください（https://www.alibabacloud.com/help/doc-detail/34951.htm）,異なる地域と接続モードに基づいて選択する (string, デフォルト: `"http://service.ap-northeast-1.maxcompute.aliyun.com/api"`)
+- **tunnelUrl**: ODPS tunnel endpointの設定はこのURLを参照ください（https://www.alibabacloud.com/help/doc-detail/34951.htm）, 異なる地域と接続モードに基づいて選択する (string, デフォルト: `"http://dt.ap-northeast-1.maxcompute.aliyun.com"`)
+- **projectName**: ODPSターゲットプロジェクト名（string, 必須項目）
+- **tableName**:  ODPSターゲットテーブル名, 実行前に作成してください（string, 必須項目）
+- **partition**: パーティション、フォーマットは'pt=20201026', パーティションテーブルのみが有効である. 非パーティションテーブルは無視してください, ターゲットテーブルは非パーティションテーブルの場合、パーティションを設定するとエラーが発生する (string, default: `null`)
+- **overwrite**: trueを設定する場合、データを更新する前に既存のデータをクリアする。非パーティションテーブルの場合、`truncate table`でデータをクリアする。パーティションテーブルの場合、`partition` 対応のパーティションを削除する (boolean, デフォルト: `false`)
+- **mappings**: フィールドの対応関係を定義する、Maxcomputeテーブルの列名とデータ読み込みプラグインにある名前と一致している場合、この設定がしなくてもいい (Map of string, デフォルト: `{}`)
 
-## Data Format
-Make sure your maxcompute table columns could map input schema, otherwise, you will get `No such Columns` error.
-You could define mapping relationships in the configuration file or mapped by names as default.
+## データフォーマット
+Maxcomputeのテーブル構成とデータインプットプラグインで取得したテーブル構成が一致でないと、`No such Columns`エラーが発生する。
+`mappings`設定項目を使って対応関係を定義するか、名前で直接対応してもいいです。
+MaxCompute関連のデータ転換は下記の通り：
 
-| Embulk Data Type | ODPS Data Type    |
+| Embulk データタイプ | ODPS データタイプ    |
 | --------         | ----- |
 | Long             |bigint |
 | Double           |double |
@@ -35,10 +36,10 @@ You could define mapping relationships in the configuration file or mapped by na
 | Timestamp        |datetime |
 | Boolean          |bool |
 
-## Example
+## 例
 
-Upload data to partition table in JP region.
-No need to set odpsUrl and tunnelUrl as default region is JP.
+下記の設定ファイルは日本リージョンのパーティションテーブルにデータをアップローする。
+デフォルトは日本リージョンなので、odpsUrlとtunnelUrl二つの設定項目を通してプロジェクトのリージョンを設定する必要はありません。
 
 ```yaml
 out:
@@ -52,10 +53,14 @@ out:
   mappings: {id: id, account: account, time: time, purchase: purchase, comments: comments}
 ```
 
-Upload data to non-partition table in SG region, use odpsUrl and tunnelUrl to change the target region.
-For non-partition tables, remove partition from configuration file.
-Will not clean up existing data as overwirite is false.
-Remove mappings from configuration file as input schema could match maxcompute table structure by names.
+下記の設定ファイルはシンガポールリージョンの非パーティションテーブルにデータをアップローする。
+odpsUrlとtunnelUrl二つの設定項目を指定することによってプロジェクトのリージョンを設定する。
+異なるリージョンと接続モードはhttps://www.alibabacloud.com/help/doc-detail/34951.htm
+サイトで定義のEndpointによりodpsUrlとtunnelUrlを設定する。
+非パーティションテーブルでは、`partition`の項目を設定する必要がありません。
+設定項目に`overwrite`はfalseの場合、データをアップロード前に既存のデータをクリアしません。
+`mappings`が設定していないため、デフォルトで名前を使ってMaxComputeテーブル構成とデータインプットプラグインで導入したテーブル構成をマッピングする。
+
 ```yaml
 out:
   type: maxcompute
@@ -69,7 +74,7 @@ out:
 ```
 
 
-## Build
+## ビルド
 
 ```
 $ ./gradlew gem  # -t to watch change of files and rebuild continuously
