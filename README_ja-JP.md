@@ -4,7 +4,7 @@
 
 このプラグインはAliyun Maxcomputeにデータを書き込むためのものです
 
-## Overview
+## 概要
 
 * **Plugin type**: output
 * **Load all or nothing**: no
