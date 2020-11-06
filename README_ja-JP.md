@@ -15,8 +15,8 @@
 
 - **accessKeyId**: アリババクラウドアカウントのaccess key id (string, 必須項目)
 - **accessKeySecret**: アリババクラウドアカウントのaccess key secret (string, 必須項目)
-- **odpsUrl**:ODPS endpointの設定はこのURLを参照ください（https://www.alibabacloud.com/help/doc-detail/34951.htm）,異なる地域と接続モードに基づいて選択する (string, デフォルト: `"http://service.ap-northeast-1.maxcompute.aliyun.com/api"`)
-- **tunnelUrl**: ODPS tunnel endpointの設定はこのURLを参照ください（https://www.alibabacloud.com/help/doc-detail/34951.htm）, 異なる地域と接続モードに基づいて選択する (string, デフォルト: `"http://dt.ap-northeast-1.maxcompute.aliyun.com"`)
+- **odpsUrl**:ODPS endpointの設定はこのURLを参照ください（https://www.alibabacloud.com/help/doc-detail/34951.htm ),異なる地域と接続モードに基づいて選択する (string, デフォルト: `"http://service.ap-northeast-1.maxcompute.aliyun.com/api"`)
+- **tunnelUrl**: ODPS tunnel endpointの設定はこのURLを参照ください（https://www.alibabacloud.com/help/doc-detail/34951.htm ）, 異なる地域と接続モードに基づいて選択する (string, デフォルト: `"http://dt.ap-northeast-1.maxcompute.aliyun.com"`)
 - **projectName**: ODPSターゲットプロジェクト名（string, 必須項目）
 - **tableName**:  ODPSターゲットテーブル名, 実行前に作成してください（string, 必須項目）
 - **partition**: パーティション、フォーマットは'pt=20201026', パーティションテーブルのみが有効である. 非パーティションテーブルは無視してください, ターゲットテーブルは非パーティションテーブルの場合、パーティションを設定するとエラーが発生する (string, default: `null`)
