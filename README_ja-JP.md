@@ -1,4 +1,4 @@
-English | [简体中文](./README_zh-CN.md) | [日本語](./README_ja-JP.md)
+[English](./README.md) | [简体中文](./README_zh-CN.md) | 日本語
 
 # Maxcompute output plugin for Embulk
 
@@ -67,6 +67,7 @@ out:
   tableName: embulk_non_partition
   overwrite: false
 ```
+
 
 ## Build
 
